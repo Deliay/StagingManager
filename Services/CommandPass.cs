@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 
 namespace CheckStaging.Services
 {
-    public struct Commander
+    public struct Command
     {
-        public string Command { get; set; }
+        public string CommandMsg { get; set; }
         public string CommandArgs { get; set; }
         public string Channel { get; set; }
         public string Owner { get; set; }
@@ -20,13 +20,13 @@ namespace CheckStaging.Services
     public class CommandPass
     {
         public static readonly CommandPass Instance = new CommandPass();
-        private readonly Dictionary<string, Func<Commander, Outcoming>> _commandExecutor = new Dictionary<string, Func<Commander, Outcoming>>();
+        private readonly Dictionary<string, Func<Command, Outgoing>> _commandExecutor = new Dictionary<string, Func<Command, Outgoing>>();
 
-        public Outcoming Out(string text) => new Outcoming() { text = text };
+        public Outgoing Out(string text) => new Outgoing() { text = text };
 
         public string SkipSpace(string str) => str.Trim();
 
-        public Outcoming Capture(Commander args)
+        public Outgoing Capture(Command args)
         {
             Console.WriteLine(args.CommandArgs);
             int[] preferStaging = new int[0];
@@ -58,7 +58,7 @@ namespace CheckStaging.Services
             return Out($"@龙轩 发生了意外情况？");
         }
 
-        public Outcoming Status(Commander args)
+        public Outgoing Status(Command args)
         {
             StringBuilder sb = new StringBuilder();
             bool hasStaging = false, hasTask = false;
@@ -87,7 +87,7 @@ namespace CheckStaging.Services
             return Out(sb.ToString());
         }
 
-        public Outcoming Release(Commander args)
+        public Outgoing Release(Command args)
         {
             int[] releaseStaging = new int[0];
             string next = args.CommandArgs.Trim();
@@ -123,13 +123,13 @@ namespace CheckStaging.Services
             return Out(sb.ToString());
         }
 
-        public Outcoming Cancel(Commander args)
+        public Outgoing Cancel(Command args)
         {
             GlobalStorage.Instance.CancelAllTask(args.Owner);
             return Out($"@{args.Owner} 你的所有排队都已取消");
         }
 
-        public Outcoming Renew(Commander args)
+        public Outgoing Renew(Command args)
         {
             int[] renewStaging = new int[0];
             string next = args.CommandArgs.Trim();
@@ -164,7 +164,7 @@ namespace CheckStaging.Services
             return Out(sb.ToString());
         }
 
-        public Outcoming Help(Commander args)
+        public Outgoing Help(Command args)
         {
             StringBuilder sb = new StringBuilder();
             sb
@@ -191,7 +191,7 @@ namespace CheckStaging.Services
             return Out(sb.ToString());
         }
 
-        public Outcoming Integration(Commander args)
+        public Outgoing Integration(Command args)
         {
             if (GlobalStorage.Instance.Integration())
             {
@@ -227,15 +227,15 @@ namespace CheckStaging.Services
             _commandExecutor.Add("i", Integration);
         }
 
-        public Commander IncomingToArgs(Incoming incoming)
+        public Command IncomingToArgs(Incoming incoming)
         {
             var raw = incoming.text.Substring(incoming.trigger_word.Length + 1).Trim();
             var spaceIndex = raw.IndexOf(' ');
             var command = spaceIndex > 0 ? raw.Substring(0, spaceIndex) : raw;
-            return new Commander()
+            return new Command()
             {
                 Channel = incoming.channel_name,
-                Command = command,
+                CommandMsg = command,
                 RawMessage = incoming.text,
                 CommandArgs = spaceIndex > 0 ? raw.Substring(command.Length + 1).Trim() : "",
                 Message = raw,
@@ -243,13 +243,13 @@ namespace CheckStaging.Services
             };
         }
 
-        public Outcoming PassIncoming(Incoming incoming)
+        public Outgoing PassIncoming(Incoming incoming)
         {
-            if (incoming.text.Length == incoming.trigger_word.Length) return Status(new Commander());
+            if (incoming.text.Length == incoming.trigger_word.Length) return Status(new Command());
             var args = IncomingToArgs(incoming);
-            if (_commandExecutor.ContainsKey(args.Command))
+            if (_commandExecutor.ContainsKey(args.CommandMsg))
             {
-                return _commandExecutor[args.Command](args);
+                return _commandExecutor[args.CommandMsg](args);
             }
             return Out($"@{args.Owner} 命令不存在，请输入`!staging help`查看帮助!");
         }

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace CheckStaging.Models
 {
-    public struct Outcoming
+    public struct Outgoing
     {
         public string text { get; set; }
     }
