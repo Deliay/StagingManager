@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace CheckStaging.Services
@@ -44,7 +45,7 @@ namespace CheckStaging.Services
         public QueueTask[] Tasks { get => QueueTasks.ToArray(); set => QueueTasks = new Queue<QueueTask>(value); }
         public AllStaging()
         {
-            Stagings = Enumerable.Range(1, GlobalStorage.MAX_STAGING_COUNT).Select(i => new Staging(i)).ToArray();
+            Stagings = Enumerable.Range(1, StagingService.MAX_STAGING_COUNT).Select(i => new Staging(i)).ToArray();
             Stagings[2].Owner = "对外小联调";
             Stagings[2].Timeleft = 99999;
             Stagings[8].Owner = "仿真环境";
@@ -54,13 +55,13 @@ namespace CheckStaging.Services
         }
     }
 
-    public class GlobalStorage
+    public class StagingService
     {
         public const int MAX_STAGING_COUNT = 19;
         public AllStaging AllStaging;
-        public static readonly GlobalStorage Instance = new GlobalStorage();
+        public static readonly StagingService Instance = new StagingService();
         private readonly string ConfigurationPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "configuration.json");
-        private GlobalStorage()
+        private StagingService()
         {
             if (File.Exists(ConfigurationPath))
             {
@@ -70,12 +71,13 @@ namespace CheckStaging.Services
                     {
                         AllStaging = (AllStaging)JsonConvert.DeserializeObject(File.ReadAllText(ConfigurationPath), typeof(AllStaging));
                         Console.WriteLine($"配置文件加载成功 {AllStaging.QueueTasks.Count} QueueTask");
+                        RemindService.Instance.ScheduleTask(AllStaging);
                     }
                     catch (Exception)
                     {
                         AllStaging = new AllStaging();
                     }
-                }
+            }
             }
             else
             {
@@ -90,18 +92,29 @@ namespace CheckStaging.Services
         public Staging GetStaging(int n) => n > 0 ? AllStaging.Stagings[n - 1] : null;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool IsStagingInUse(int n)
+        public bool IsStagingInUse(int n) => IsStagingInUse(GetStaging(n));
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool IsStagingInUse(Staging staging)
         {
-            if (GetStaging(n).StartTime.AddDays(GetStaging(n).Timeleft) > DateTime.Today) return true;
+            if (staging.StartTime.AddDays(staging.Timeleft) > DateTime.Today) return true;
             else return false;
         }
+
+        public IEnumerable<Staging> NonIdleStagings() => Instance.AllStaging.Stagings.Where(IsStagingInUse);
+
+        public IEnumerable<Staging> IdleStagings() => Instance.AllStaging.Stagings.Where(c => !IsStagingInUse(c));
+
+        public int IdleStagingCount() => IdleStagings().Count();
 
         public bool Integration()
         {
             var staging = GetStaging(2);
             if (staging.Owner == "集成测试")
             {
+                staging.Owner = string.Empty;
                 staging.Timeleft = 0;
+                staging.StartTime = DateTime.Today;
                 return true;
             }
             else
@@ -124,7 +137,7 @@ namespace CheckStaging.Services
             {
                 return (null, null, "你已经占了期望的Staging了，请换个Staging");
             }
-            if (perfer.Length == 0 &&  GetAllStaging().Any(s => s.Owner == Owner))
+            if (perfer.Length == 0 && GetAllStaging().Any(s => s.Owner == Owner && IsStagingInUse(s.StagingId)))
             {
                 return (null, null, "你已经占了任意一台Staging，如需其他Staging，请指定Staging");
             }
@@ -200,25 +213,58 @@ namespace CheckStaging.Services
                 }
                 if (removedStaging.Count > 0)
                 {
-                    if (AllStaging.QueueTasks.TryPeek(out QueueTask task))
-                    {
-                        if (task.PreferStaging.Length != 0 && removedStaging.All(s => !task.PreferStaging.Contains(s.StagingId)))
-                        {
-                            _save();
-                            return (null, null, removedStaging);
-                        }
-                        var staging = removedStaging.First(s => task.PreferStaging.Contains(s.StagingId));
-                        staging.Owner = task.Owner;
-                        staging.StartTime = DateTime.Today;
-                        staging.Timeleft = task.Timeleft;
-                        AllStaging.QueueTasks.Dequeue();
-                        _save();
-                        return (task, staging, removedStaging);
-                    }
+                    var (queue, task) = ProceedQueueTask();
+                    return (queue, task, removedStaging);
                 }
                 _save();
                 return (null, null, removedStaging);
             }
+        }
+
+        public (QueueTask, Staging) ProceedQueueTask()
+        {
+            var first = AllStaging.QueueTasks.FirstOrDefault();
+            var last = AllStaging.QueueTasks.LastOrDefault();
+            while (AllStaging.QueueTasks.TryPeek(out QueueTask task))
+            {
+                // 如果没有任意staging，则跳过本次处理
+                if (IdleStagingCount() == 0)
+                {
+                    return (null, null);
+                }
+
+                // 如果规定了staging，但没有找到合适的staging，则重新入队伍
+                if (task.PreferStaging.Length != 0 && IdleStagings().All(s => !task.PreferStaging.Contains(s.StagingId)))
+                {
+                    AllStaging.QueueTasks.Enqueue(AllStaging.QueueTasks.Dequeue());
+                    // 如果是最后一个队列任务，也跳出本次计算
+                    if (task == last)
+                    {
+                        return (null, null);
+                    }
+                    continue;
+                }
+
+                var staging = task.PreferStaging.Length != 0 
+                    ? GetAllStaging().First(s => !IsStagingInUse(s) && task.PreferStaging.Contains(s.StagingId)) 
+                    : IdleStagings().First();
+                staging.Owner = task.Owner;
+                staging.StartTime = DateTime.Today;
+                staging.Timeleft = task.Timeleft;
+                AllStaging.QueueTasks.Dequeue();
+                // 如果找到了staging，则将所有剩余的请求重新入队
+                while (AllStaging.QueueTasks.TryPeek(out QueueTask next) && last != next)
+                {
+                    AllStaging.QueueTasks.Enqueue(AllStaging.QueueTasks.Dequeue());
+                }
+                if (first != last)
+                {
+                    AllStaging.QueueTasks.Enqueue(AllStaging.QueueTasks.Dequeue());
+                }
+                _save();
+                return (task, staging);
+            }
+            return (null, null);
         }
 
         private void _save()
