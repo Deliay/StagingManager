@@ -253,7 +253,8 @@ namespace CheckStaging.Services
                 staging.Timeleft = task.Timeleft;
                 AllStaging.QueueTasks.Dequeue();
                 // 如果找到了staging，则将所有剩余的请求重新入队
-                while (AllStaging.QueueTasks.TryPeek(out QueueTask next) && last != next)
+                var currLast = AllStaging.QueueTasks.LastOrDefault();
+                while (AllStaging.QueueTasks.TryPeek(out QueueTask next) && currLast != next)
                 {
                     AllStaging.QueueTasks.Enqueue(AllStaging.QueueTasks.Dequeue());
                 }
