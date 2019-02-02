@@ -123,6 +123,7 @@ namespace CheckStaging.Services
 
     public class JenkinsServices
     {
+        public static readonly Dictionary<int, bool> BuildStatusCache = new Dictionary<int, bool>();
         public static readonly JenkinsServices Instance = new JenkinsServices();
         private string _jenkinsLastError = string.Empty;
         public JenkinsConfiguration JenkinsConfiguration;
@@ -197,6 +198,7 @@ namespace CheckStaging.Services
             {
                 var json = result.ParseResult();
                 var param = json["actions"].FirstOrDefault(t => t.HasValues && t["_class"].ToString() == "hudson.model.ParametersAction").ToObject<ParameterActions>();
+
                 if (BuildCache.ContainsKey(id))
                 {
                     BuildCache[id] = json.ToObject<Build>();
@@ -206,6 +208,29 @@ namespace CheckStaging.Services
                 {
                     BuildCache.Add(id, json.ToObject<Build>());
                     ParameterCache.Add(id, param.parameters.ToParameters());
+                }
+                // mean in building
+                if (BuildCache[id].building)
+                {
+                    BuildStatusCache[id] = true;
+                    Console.WriteLine($"#{id} still building...");
+                }
+                // mean tracking by this service(status TRUE), and build complete
+                if (BuildStatusCache.ContainsKey(id) && BuildStatusCache[id] && !BuildCache[id].building)
+                {
+                    var stagingId = int.Parse(ParameterCache[id].staging.Substring(7));
+                    var staging = StagingService.Instance.GetStaging(stagingId);
+                    BuildStatusCache[id] = false;
+                    Console.WriteLine($"Build {id} seem complete!");
+                    // success
+                    if (BuildCache[id].result == "SUCCESS")
+                    {
+                        RemindService.Instance.SendMessage($"@{staging.Owner} 你的部署任务`{ParameterCache[id].branch}`->`{ParameterCache[id].staging}` 已部署完成。");
+                    }
+                    else
+                    {
+                        RemindService.Instance.SendMessage($"@{staging.Owner} 你的部署任务`{ParameterCache[id].branch}`->`{ParameterCache[id].staging}` 部署失败");
+                    }
                 }
             }
         }
@@ -293,6 +318,7 @@ namespace CheckStaging.Services
 
         public string Build(string owner, string staging, string branch)
         {
+            var intStaging = int.Parse(staging);
             var fullStagingName = $"staging{staging}";
             var content = new FormUrlEncodedContent(new[] {
                 new KeyValuePair<string, string>("name", "branch"),
@@ -316,9 +342,9 @@ namespace CheckStaging.Services
                 }).ToString()),
                 new KeyValuePair<string, string>(crumbField, crumbIssuer),
             });
-            if (StagingService.Instance.GetStaging(int.Parse(staging)).Owner != owner)
+            if (StagingService.Instance.GetStaging(intStaging).Owner != owner)
             {
-                return $"这个staging不是你在占用~ 请先占用。如果仍需要部署请前往 [{JenkinsConfiguration.Pipeline}]({JenkinsConfiguration.BaseURL}job/{JenkinsConfiguration.Pipeline})部署";
+                return $"@{owner} 这个staging不是你在占用~ 请先占用。如果仍需要部署请前往 [{JenkinsConfiguration.Pipeline}]({JenkinsConfiguration.BaseURL}job/{JenkinsConfiguration.Pipeline})部署";
             }
             Task.Run(() =>
             {
@@ -327,7 +353,7 @@ namespace CheckStaging.Services
                 if (BuildCache.Any(p => p.Value.building && ParameterCache[p.Key].staging == fullStagingName))
                 {
                     var build = BuildCache.First(p => p.Value.building && ParameterCache[p.Key].staging == fullStagingName);
-                    RemindService.Instance.SendMessage($"这个staging已经正在部署了，点此 [查看部署进度]({JenkinsConfiguration.BaseURL}job/{JenkinsConfiguration.Pipeline}/{build.Value.number})", "Jenkins");
+                    RemindService.Instance.SendMessage($"@{owner} 这个staging已经正在部署了，点此 [查看部署进度]({JenkinsConfiguration.BaseURL}job/{JenkinsConfiguration.Pipeline}/{build.Value.number})", "Jenkins");
                     return;
                 }
                 string ret = string.Empty;
@@ -335,7 +361,10 @@ namespace CheckStaging.Services
                 {
                     Console.WriteLine(result.ToString());
                     Console.WriteLine(HttpClient.DefaultRequestHeaders.ToString());
-                    if (result.StatusCode == HttpStatusCode.Created) ret = $"@{owner} 部署任务 `{branch}`->`{fullStagingName}` 添加成功 :tada:";
+                    if (result.StatusCode == HttpStatusCode.Created)
+                    {
+                        ret = $"@{owner} 部署任务 `{branch}`->`{fullStagingName}` 添加成功 :tada:";
+                    }
                     else ret = $"@{owner} 部署任务 `{branch}`->`{fullStagingName}` 添加失败!! ({result.StatusCode.ToString()})";
                 };
                 RemindService.Instance.SendMessage(ret, "Jenkins");

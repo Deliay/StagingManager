@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -90,6 +91,14 @@ namespace CheckStaging.Services
             a();
             t.Change(nextSpan, TimeSpan.Zero);
         };
+        private readonly Action<Timer, Action> Fivithsec = (t, a) =>
+        {
+            var nextTime = DateTime.Now.AddSeconds(15);
+            var nextSpan = nextTime - DateTime.Now;
+            Console.WriteLine($"Next fetch jenkins build status in {nextTime}, {nextSpan.TotalSeconds} second(s) left");
+            a();
+            t.Change(nextSpan, TimeSpan.Zero);
+        };
 
         /// <summary>
         /// Send message to channel
@@ -108,6 +117,7 @@ namespace CheckStaging.Services
         {
             Action scheduleWillExpired = () =>
             {
+                StringBuilder sb = new StringBuilder();
                 foreach (var s in ss.Stagings)
                 {
                     if (!StagingService.Instance.IsStagingInUse(s)) continue;
@@ -115,9 +125,10 @@ namespace CheckStaging.Services
                     if (expireTime < 2)
                     {
                         Console.WriteLine($"Staging{s.StagingId} will expired in today, please renew it or prepare to release.");
-                        Instance.SendMessage($"@{s.Owner} 你占用的Staging{s.StagingId} 今天即将过期，请注意续期或者释放！");
+                        sb.AppendLine($"@{s.Owner} 你占用的Staging{s.StagingId} 今天即将过期，请注意续期或者释放！");
                     }
                 }
+                Instance.SendMessage(sb.ToString());
             };
             Action scheduleIsAlreadyExpired = () =>
             {
@@ -137,10 +148,16 @@ namespace CheckStaging.Services
                     nextQueue = StagingService.Instance.ProceedQueueTask();
                 }
             };
+            Action scheduleJenkinsBuildRefresh = () =>
+            {
+                JenkinsServices.Instance.GetPipeline();
+                JenkinsServices.Instance.PeekWhileNotInBuild();
+            };
             Console.WriteLine($"scheduleWillExpired will execute at {GetNextNotifyTime()}  ({(GetNextNotifyTime() - DateTime.Now).TotalHours} hour(s) left.)");
             ScheduleTaskServices.Instance.RegisterScheduleTask(scheduleWillExpired, GetNextNotifyTime() - DateTime.Now, TimeSpan.Zero, Notify);
             Console.WriteLine($"scheduleIsAlreadyExpired will execute at {DateTime.Today.AddDays(1)}  ({(DateTime.Today.AddDays(1) - DateTime.Now).TotalHours} hour(s) left.)");
             ScheduleTaskServices.Instance.RegisterScheduleTask(scheduleIsAlreadyExpired, DateTime.Today.AddDays(1) - DateTime.Now, TimeSpan.Zero, Boardcast);
+            ScheduleTaskServices.Instance.RegisterScheduleTask(scheduleJenkinsBuildRefresh, DateTime.Now.AddSeconds(15) - DateTime.Now, TimeSpan.Zero, Fivithsec);
         }
     }
 }
