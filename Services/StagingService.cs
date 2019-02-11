@@ -71,13 +71,13 @@ namespace CheckStaging.Services
                     {
                         AllStaging = (AllStaging)JsonConvert.DeserializeObject(File.ReadAllText(ConfigurationPath), typeof(AllStaging));
                         Console.WriteLine($"配置文件加载成功 {AllStaging.QueueTasks.Count} QueueTask");
-                        RemindService.Instance.ScheduleTask(AllStaging);
                     }
                     catch (Exception)
                     {
                         AllStaging = new AllStaging();
                     }
-            }
+                    RemindService.Instance.ScheduleTask(AllStaging);
+                }
             }
             else
             {

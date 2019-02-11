@@ -108,9 +108,12 @@ namespace CheckStaging.Services
         public void SendMessage(string msg, string channel = "")
         {
             var realChannel = channel == "" ? PostUri.First().Value : PostUri[channel];
-            using (var res = HttpClient.PostAsJsonAsync(realChannel, new Outgoing() { text = msg }).Result.EnsureSuccessStatusCode())
+            using (var res = HttpClient.PostAsJsonAsync(realChannel, new Outgoing() { text = msg }).Result)
             {
-                Console.WriteLine($"Send message: {msg}");
+                if (res.IsSuccessStatusCode)
+                    Console.WriteLine($"Send message: {msg}");
+                else
+                    Console.WriteLine($"Bearychat FAIL! Request {realChannel} get {res.StatusCode.ToString()}");
             }
         }
         public void ScheduleTask(AllStaging ss)
