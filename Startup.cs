@@ -39,8 +39,7 @@ namespace CheckStaging
             {
                 app.UseHsts();
             }
-
-            app.UseHttpsRedirection();
+            
             app.UseMvc();
         }
     }
