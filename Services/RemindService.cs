@@ -107,7 +107,7 @@ namespace CheckStaging.Services
         /// <param name="channel">empty for fist channel in configuration</param>
         public void SendMessage(string msg, string channel = "")
         {
-            var realChannel = channel == "" ? PostUri.First().Value : PostUri[channel];
+            var realChannel = channel == "" || !PostUri.ContainsKey(channel) ? PostUri.First().Value : PostUri[channel];
             using (var res = HttpClient.PostAsJsonAsync(realChannel, new Outgoing() { text = msg }).Result)
             {
                 if (res.IsSuccessStatusCode)
