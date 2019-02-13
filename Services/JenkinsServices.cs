@@ -191,6 +191,7 @@ namespace CheckStaging.Services
         }
         private readonly Random random = new Random();
         private string Request(string param, bool makeAPI = true) => JenkinsConfiguration.BaseURL + param + (makeAPI ? "/api/json" : "") + $"?_={random.Next()}";
+        private string BuildLink(string id) => $"{JenkinsConfiguration.BaseURL}job/{JenkinsConfiguration.Pipeline}/{id}";
 
         public void GetBuild(int id)
         {
@@ -228,7 +229,7 @@ namespace CheckStaging.Services
                     {
                         status = "已部署完成";
                     }
-                    RemindService.Instance.SendMessage($"@{staging.Owner} 你的部署任务${id} `{ParameterCache[id].branch}`->`{ParameterCache[id].staging}` {status}。[点此查看详情]({JenkinsConfiguration.BaseURL}job/{JenkinsConfiguration.Pipeline}/{id})");
+                    RemindService.Instance.SendMessage($"@{staging.Owner} 你的部署任务${id} `{ParameterCache[id].branch}`->`{ParameterCache[id].staging}` {status}。[点此查看详情]({BuildLink(id.ToString())})");
                 }
             }
         }
@@ -284,7 +285,7 @@ namespace CheckStaging.Services
                     var percentDone = duration.TotalMilliseconds / build.Value.estimatedDuration * 100;
                     var allDuration = TimeSpan.FromMilliseconds(build.Value.estimatedDuration);
                     var param = ParameterCache[build.Value.number];
-                    sb.AppendLine($"Build #{build.Value.number}： `{param.branch}`->`{param.staging}` ({percentDone:N2}%, {duration.TotalMinutes:N2}/{allDuration.TotalMinutes:N2}min)");
+                    sb.AppendLine($"Build [#{build.Value.number}]({BuildLink(build.Value.number.ToString())})： `{param.branch}`->`{param.staging}` ({percentDone:N2}%, {duration.TotalMinutes:N2}/{allDuration.TotalMinutes:N2}min)");
                 }
                 if (!isBuilding) sb.AppendLine("当前没有任务正在Build");
                 sb.AppendLine("---");
