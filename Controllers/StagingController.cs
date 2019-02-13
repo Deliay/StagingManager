@@ -28,7 +28,7 @@ namespace CheckStaging.Controllers
             {
                 return Forbid("User name error");
             }
-            var result = CommandService.Instance.PassIncoming(value);
+            var result = StagingCommandService.Instance.PassIncoming(value);
             if (result.text == string.Empty) return Ok();
             return Ok(result);
         }

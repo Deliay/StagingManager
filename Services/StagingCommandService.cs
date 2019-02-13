@@ -7,25 +7,16 @@ using System.Threading.Tasks;
 
 namespace CheckStaging.Services
 {
-    public struct Command
-    {
-        public string CommandMsg { get; set; }
-        public string CommandArgs { get; set; }
-        public string Channel { get; set; }
-        public string Owner { get; set; }
-        public string Message { get; set; }
-        public string RawMessage { get; set; }
-    }
 
-    public class CommandService
+    public class StagingCommandService : CommandBase<StagingCommandService>
     {
-        public static readonly CommandService Instance = new CommandService();
-        private readonly Dictionary<string, Func<Command, Outgoing>> _commandExecutor = new Dictionary<string, Func<Command, Outgoing>>();
+        public static readonly StagingCommandService Instance = new StagingCommandService();
 
         public Outgoing Out(string text) => new Outgoing() { text = text };
 
         public string SkipSpace(string str) => str.Trim();
 
+        [CommandHandler("capture", "c")]
         public Outgoing Capture(Command args)
         {
             Console.WriteLine(args.CommandArgs);
@@ -58,6 +49,7 @@ namespace CheckStaging.Services
             return Out($"@龙轩 发生了意外情况？");
         }
 
+        [CommandHandler("status", "s", "all")]
         public Outgoing Status(Command args)
         {
             StringBuilder sb = new StringBuilder();
@@ -100,6 +92,7 @@ namespace CheckStaging.Services
             return Out(sb.ToString());
         }
 
+        [CommandHandler("release", "r")]
         public Outgoing Release(Command args)
         {
             int[] releaseStaging = new int[0];
@@ -136,12 +129,14 @@ namespace CheckStaging.Services
             return Out(sb.ToString());
         }
 
+        [CommandHandler("cancel", "x")]
         public Outgoing Cancel(Command args)
         {
             StagingService.Instance.CancelAllTask(args.Owner);
             return Out($"@{args.Owner} 你的所有排队都已取消");
         }
-
+        
+        [CommandHandler("renew", "n")]
         public Outgoing Renew(Command args)
         {
             int[] renewStaging = new int[0];
@@ -177,6 +172,7 @@ namespace CheckStaging.Services
             return Out(sb.ToString());
         }
 
+        [CommandHandler("help", "h")]
         public Outgoing Help(Command args)
         {
             StringBuilder sb = new StringBuilder();
@@ -207,6 +203,7 @@ namespace CheckStaging.Services
             return Out(sb.ToString());
         }
 
+        [CommandHandler("integration", "i")]
         public Outgoing Integration(Command args)
         {
             if (StagingService.Instance.Integration())
@@ -219,6 +216,7 @@ namespace CheckStaging.Services
             }
         }
 
+        [CommandHandler("jenkins", "j")]
         public Outgoing Jenkins(Command args)
         {
             var splitArgs = args.CommandArgs.Split(' ', 3);
@@ -240,48 +238,16 @@ namespace CheckStaging.Services
             return new Outgoing() { text = JenkinsServices.Instance.GetMainPanel(args.Owner) };
         }
 
-        private CommandService()
+        private StagingCommandService()
         {
-            _commandExecutor.Add("capture", Capture);
-            _commandExecutor.Add("c", Capture);
-
-            _commandExecutor.Add("status", Status);
-            _commandExecutor.Add("s", Status);
-            _commandExecutor.Add("all", Status);
-
-            _commandExecutor.Add("release", Release);
-            _commandExecutor.Add("r", Release);
-
-            _commandExecutor.Add("renew", Renew);
-            _commandExecutor.Add("n", Renew);
-
-            _commandExecutor.Add("help", Help);
-            _commandExecutor.Add("h", Help);
-
-            _commandExecutor.Add("cancel", Cancel);
-            _commandExecutor.Add("x", Cancel);
-
-            _commandExecutor.Add("integration", Integration);
-            _commandExecutor.Add("i", Integration);
-
-            _commandExecutor.Add("jenkins", Jenkins);
-            _commandExecutor.Add("j", Jenkins);
-        }
-
-        public Command IncomingToArgs(Incoming incoming)
-        {
-            var raw = incoming.text.Substring(incoming.trigger_word.Length + 1).Trim();
-            var spaceIndex = raw.IndexOf(' ');
-            var command = spaceIndex > 0 ? raw.Substring(0, spaceIndex) : raw;
-            return new Command()
-            {
-                Channel = incoming.channel_name,
-                CommandMsg = command,
-                RawMessage = incoming.text,
-                CommandArgs = spaceIndex > 0 ? raw.Substring(command.Length + 1).Trim() : "",
-                Message = raw,
-                Owner = incoming.user_name,
-            };
+            RegisterCommand(Capture, "capture", "c");
+            RegisterCommand(Status, "status", "s", "all");
+            RegisterCommand(Release, "r", "release");
+            RegisterCommand(Renew, "renew", "n");
+            RegisterCommand(Help, "help", "h");
+            RegisterCommand(Cancel, "cancel", "x");
+            RegisterCommand(Integration, "integration", "i");
+            RegisterCommand(Jenkins, "jenkins", "j");
         }
 
         public Outgoing PassIncoming(Incoming incoming)
@@ -289,9 +255,9 @@ namespace CheckStaging.Services
             if (incoming.text.Length == incoming.trigger_word.Length)
                 return Status(new Command() { Owner = incoming.user_name, CommandArgs = "" });
             var args = IncomingToArgs(incoming);
-            if (_commandExecutor.ContainsKey(args.CommandMsg))
+            if (base.HasRegisterTrigger(args.CommandMsg))
             {
-                return _commandExecutor[args.CommandMsg](args);
+                return base[args.CommandMsg](args);
             }
             return Out($"@{args.Owner} 命令不存在，请输入`!staging help`查看帮助!");
         }
