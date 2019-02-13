@@ -240,14 +240,6 @@ namespace CheckStaging.Services
 
         private StagingCommandService()
         {
-            RegisterCommand(Capture, "capture", "c");
-            RegisterCommand(Status, "status", "s", "all");
-            RegisterCommand(Release, "r", "release");
-            RegisterCommand(Renew, "renew", "n");
-            RegisterCommand(Help, "help", "h");
-            RegisterCommand(Cancel, "cancel", "x");
-            RegisterCommand(Integration, "integration", "i");
-            RegisterCommand(Jenkins, "jenkins", "j");
         }
 
         public Outgoing PassIncoming(Incoming incoming)
