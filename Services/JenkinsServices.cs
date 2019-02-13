@@ -229,7 +229,7 @@ namespace CheckStaging.Services
                     {
                         status = "已部署完成";
                     }
-                    RemindService.Instance.SendMessage($"@{staging.Owner} 你的部署任务${id} `{ParameterCache[id].branch}`->`{ParameterCache[id].staging}` {status}。[点此查看详情]({BuildLink(id.ToString())})");
+                    RemindService.Instance.SendMessage($"@{staging.Owner} 你的部署任务[#{id}]({BuildLink(id.ToString())}) `{ParameterCache[id].branch}`->`{ParameterCache[id].staging}` {status}。");
                 }
             }
         }
