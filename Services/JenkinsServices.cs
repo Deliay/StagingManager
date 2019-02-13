@@ -319,10 +319,16 @@ namespace CheckStaging.Services
         public string Build(string owner, string staging, string branch)
         {
             var intStaging = int.Parse(staging);
+            if (StagingService.Instance.GetStaging(intStaging).Owner != owner)
+            {
+                return $"@{owner} 这个staging不是你在占用~ 请先占用。如果仍需要部署请前往 [{JenkinsConfiguration.Pipeline}]({JenkinsConfiguration.BaseURL}job/{JenkinsConfiguration.Pipeline})部署";
+            }
             var fullStagingName = $"staging{staging}";
             var content = new FormUrlEncodedContent(new[] {
                 new KeyValuePair<string, string>("name", "branch"),
                 new KeyValuePair<string, string>("value", branch),
+                new KeyValuePair<string, string>("name", "deployer"),
+                new KeyValuePair<string, string>("value", owner),
                 new KeyValuePair<string, string>("name", "staging"),
                 new KeyValuePair<string, string>("value", fullStagingName),
                 new KeyValuePair<string, string>("name", "ignore_lint"),
@@ -334,6 +340,7 @@ namespace CheckStaging.Services
                 new KeyValuePair<string, string>("json", JObject.FromObject(new BuildWithParameters() {
                     parameter = new List<ParameterAction>() {
                         new ParameterAction() { name = "branch", value = branch },
+                        new ParameterAction() { name = "deployer", value = owner },
                         new ParameterAction() { name = "staging", value = fullStagingName },
                         new ParameterAction() { name = "ignore_lint", value = "true" },
                         new ParameterAction() { name = "without_sourcemap", value = "true" },
@@ -342,10 +349,6 @@ namespace CheckStaging.Services
                 }).ToString()),
                 new KeyValuePair<string, string>(crumbField, crumbIssuer),
             });
-            if (StagingService.Instance.GetStaging(intStaging).Owner != owner)
-            {
-                return $"@{owner} 这个staging不是你在占用~ 请先占用。如果仍需要部署请前往 [{JenkinsConfiguration.Pipeline}]({JenkinsConfiguration.BaseURL}job/{JenkinsConfiguration.Pipeline})部署";
-            }
             Task.Run(() =>
             {
                 GetPipeline();
