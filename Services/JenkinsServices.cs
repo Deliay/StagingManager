@@ -223,14 +223,12 @@ namespace CheckStaging.Services
                     BuildStatusCache[id] = false;
                     Console.WriteLine($"Build {id} seem complete!");
                     // success
+                    string status = "部署失败";
                     if (BuildCache[id].result == "SUCCESS")
                     {
-                        RemindService.Instance.SendMessage($"@{staging.Owner} 你的部署任务`{ParameterCache[id].branch}`->`{ParameterCache[id].staging}` 已部署完成。");
+                        status = "已部署完成";
                     }
-                    else
-                    {
-                        RemindService.Instance.SendMessage($"@{staging.Owner} 你的部署任务`{ParameterCache[id].branch}`->`{ParameterCache[id].staging}` 部署失败");
-                    }
+                    RemindService.Instance.SendMessage($"@{staging.Owner} 你的部署任务${id} `{ParameterCache[id].branch}`->`{ParameterCache[id].staging}` {status}。[点此查看详情]({JenkinsConfiguration.BaseURL}job/{JenkinsConfiguration.Pipeline}/{id})");
                 }
             }
         }
