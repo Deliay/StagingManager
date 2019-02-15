@@ -186,6 +186,10 @@ namespace CheckStaging.Services
         public void PassCircleCIWebhook(CircleCIWebhook webhook)
         {
             StringBuilder sb = new StringBuilder();
+            List<OutgoingAttachment> attachments = new List<OutgoingAttachment>(2)
+            {
+                StringToCiStatus(webhook.status, webhook.build_num, webhook.build_url)
+            };
             sb.AppendLine($"**Build** [#{webhook.build_num}]({webhook.build_url}): **{webhook.status}** on branch `{webhook.branch}`");
             sb.AppendLine("---");
             string user = null;
@@ -194,17 +198,18 @@ namespace CheckStaging.Services
                 var pr = webhook.pull_requests[0];
                 var realName = GetNotifyName(webhook.user.vcs_type, webhook.user.login);
                 if (realName != webhook.user.login) user = realName.Substring(1);
-                sb.AppendLine($"Pull Request: [{pr.head_sha.Substring(0, 6)}]({pr.url}) - {realName}");
-                sb.AppendLine($"> {webhook.subject}");
+                attachments.Add(new OutgoingAttachment()
+                {
+                    title = $"Commit: {pr.head_sha.Substring(0, 6)} - {realName}",
+                    url = pr.url,
+                    text = webhook.subject,
+                });
             }
             RemindService.Instance.SendMessage(new Outgoing()
             {
                 text = sb.ToString(),
                 notification = "Circle CI Result",
-                attachments = new OutgoingAttachment[]
-                {
-                    StringToCiStatus(webhook.status, webhook.build_num, webhook.build_url)
-                },
+                attachments = attachments.ToArray(),
                 user = user,
             }, "CircleCI");
         }
