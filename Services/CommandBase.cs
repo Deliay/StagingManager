@@ -83,5 +83,9 @@ namespace CheckStaging.Services
             };
         }
 
+        protected Outgoing Out(string text) => new Outgoing() { text = text };
+
+        protected string SkipSpace(string str) => str.Trim();
+
     }
 }
