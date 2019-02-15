@@ -64,7 +64,8 @@ namespace CheckStaging.Services
 
                 if (StagingService.Instance.IsStagingInUse(staging.StagingId))
                 {
-                    sb.AppendLine($"**Staging{staging.StagingId}** {getStatusStaging(staging)}，协作:[{getPartners(staging)}]");
+                    var partners = staging.ListPartners.Count > 0 ? $"协作:[{getPartners(staging)}]" : string.Empty;
+                    sb.AppendLine($"**Staging{staging.StagingId}** {getStatusStaging(staging)}，{partners}");
                     hasStaging = true;
                 }
             }
