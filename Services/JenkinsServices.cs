@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using CheckStaging.Models;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -224,12 +225,27 @@ namespace CheckStaging.Services
                     BuildStatusCache[id] = false;
                     Console.WriteLine($"Build {id} seem complete!");
                     // success
+                    string color = "#fe2e2e";
                     string status = "部署失败";
                     if (BuildCache[id].result == "SUCCESS")
                     {
                         status = "已部署完成";
+                        color = "#81F781";
                     }
-                    RemindService.Instance.SendMessage($"@{staging.Owner} 你的部署任务[#{id}]({BuildLink(id.ToString())}) `{ParameterCache[id].branch}`->`{ParameterCache[id].staging}` {status}。");
+                    RemindService.Instance.SendMessage(new Outgoing()
+                    {
+                        text = $"@{staging.Owner}",
+                        attachments = new OutgoingAttachment[]
+                        {
+                            new OutgoingAttachment()
+                            {
+                                title = $"你的部署任务 [#{id}] {status}",
+                                url = BuildLink(id.ToString()),
+                                text = $"`{ParameterCache[id].branch}`->`{ParameterCache[id].staging}`",
+                                color = color,
+                            }
+                        }
+                    });
                 }
             }
         }
