@@ -210,7 +210,6 @@ namespace CheckStaging.Services
                 text = sb.ToString(),
                 notification = "Circle CI Result",
                 attachments = attachments.ToArray(),
-                user = user,
             }, "CircleCI");
         }
 
