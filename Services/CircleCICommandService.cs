@@ -153,7 +153,7 @@ namespace CheckStaging.Services
                 // exist bind
                 if (AccountBind.bind[channel].ContainsKey(name))
                 {
-                    return $"@{AccountBind.bind[channel][name]}({name})";
+                    return $"@{AccountBind.bind[channel][name]} ({name})";
                 }
             }
             return name;
@@ -186,10 +186,7 @@ namespace CheckStaging.Services
         public void PassCircleCIWebhook(CircleCIWebhook webhook)
         {
             StringBuilder sb = new StringBuilder();
-            List<OutgoingAttachment> attachments = new List<OutgoingAttachment>(2)
-            {
-                StringToCiStatus(webhook.status, webhook.build_num, webhook.build_url)
-            };
+            List<OutgoingAttachment> attachments = new List<OutgoingAttachment>(2);
             sb.AppendLine($"**Build** [#{webhook.build_num}]({webhook.build_url}): **{webhook.status}** on branch `{webhook.branch}`");
             sb.AppendLine("---");
             string user = null;
@@ -198,13 +195,15 @@ namespace CheckStaging.Services
                 var pr = webhook.pull_requests[0];
                 var realName = GetNotifyName(webhook.user.vcs_type, webhook.user.login);
                 if (realName != webhook.user.login) user = realName.Substring(1);
+                sb.AppendLine(realName);
                 attachments.Add(new OutgoingAttachment()
                 {
-                    title = $"Commit: {pr.head_sha.Substring(0, 6)} - {realName}",
+                    title = $"{webhook.branch}({pr.head_sha.Substring(0, 6)})",
                     url = pr.url,
                     text = webhook.subject,
                 });
             }
+            attachments.Add(StringToCiStatus(webhook.status, webhook.build_num, webhook.build_url));
             RemindService.Instance.SendMessage(new Outgoing()
             {
                 text = sb.ToString(),
