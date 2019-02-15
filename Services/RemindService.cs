@@ -107,8 +107,17 @@ namespace CheckStaging.Services
         /// <param name="channel">empty for fist channel in configuration</param>
         public void SendMessage(string msg, string channel = "")
         {
+            SendMessage(new Outgoing() { text = msg }, channel);
+        }
+        /// <summary>
+        /// Send message to channel
+        /// </summary>
+        /// <param name="msg">the message want to send</param>
+        /// <param name="channel">the channel want to specify</param>
+        public void SendMessage(Outgoing msg, string channel = "")
+        {
             var realChannel = channel == "" || !PostUri.ContainsKey(channel) ? PostUri.First().Value : PostUri[channel];
-            using (var res = HttpClient.PostAsJsonAsync(realChannel, new Outgoing() { text = msg }).Result)
+            using (var res = HttpClient.PostAsJsonAsync(realChannel, msg).Result)
             {
                 if (res.IsSuccessStatusCode)
                     Console.WriteLine($"Send message: {msg}");
