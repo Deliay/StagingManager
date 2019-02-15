@@ -127,6 +127,7 @@ namespace CheckStaging.Services
         public static readonly Dictionary<int, bool> BuildStatusCache = new Dictionary<int, bool>();
         public static readonly JenkinsServices Instance = new JenkinsServices();
         private string _jenkinsLastError = string.Empty;
+        public bool JenkinsStatus { get => IsStagingConfigurated && _jenkinsLastError == string.Empty; }
         public JenkinsConfiguration JenkinsConfiguration;
         private readonly string ConfigurationPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "jenkins.json");
         private readonly bool IsStagingConfigurated = false;
@@ -150,7 +151,6 @@ namespace CheckStaging.Services
                         return;
                     }
                     string cred = $"{JenkinsConfiguration.UserName}:{JenkinsConfiguration.Password}";
-                    Console.WriteLine($"Basic {cred}");
                     HttpClient.DefaultRequestHeaders.Authorization =
                         new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes(cred)));
 
@@ -187,6 +187,7 @@ namespace CheckStaging.Services
             }
             else
             {
+                _jenkinsLastError = "尚未配置Jenkins服务";
                 JenkinsConfiguration = new JenkinsConfiguration();
             }
         }
@@ -234,7 +235,7 @@ namespace CheckStaging.Services
                     }
                     RemindService.Instance.SendMessage(new Outgoing()
                     {
-                        text = $"@{staging.Owner}",
+                        text = $"@{staging.Owner} {string.Join(" ", staging.ListPartners.Select(partner => $"@{partner}"))}",
                         attachments = new OutgoingAttachment[]
                         {
                             new OutgoingAttachment()
@@ -274,7 +275,7 @@ namespace CheckStaging.Services
 
         public string GetMainPanel(string owner)
         {
-            if (!IsStagingConfigurated)
+            if (!JenkinsStatus)
             {
                 return $"Jenkins错误 {_jenkinsLastError}";
             }
@@ -334,10 +335,13 @@ namespace CheckStaging.Services
         public string Build(string owner, string staging, string branch)
         {
             var intStaging = int.Parse(staging);
-            if (StagingService.Instance.GetStaging(intStaging).Owner != owner)
+            var stagingInst = StagingService.Instance.GetStaging(intStaging);
+            var isSpecial = stagingInst.IsSpecialStaging();
+            if (stagingInst.Owner != owner && !stagingInst.ListPartners.Contains(owner))
             {
-                return $"@{owner} 这个staging不是你在占用~ 请先占用。如果仍需要部署请前往 [{JenkinsConfiguration.Pipeline}]({JenkinsConfiguration.BaseURL}job/{JenkinsConfiguration.Pipeline})部署";
+                return $"@{owner} 这个staging不是你在占用或协作~ 请先占用或加入协作。如果仍需要部署请前往 [{JenkinsConfiguration.Pipeline}]({JenkinsConfiguration.BaseURL}job/{JenkinsConfiguration.Pipeline})部署";
             }
+            if (!JenkinsStatus) return _jenkinsLastError;
             var fullStagingName = $"staging{staging}";
             var content = new FormUrlEncodedContent(new[] {
                 new KeyValuePair<string, string>("name", "branch"),
@@ -392,6 +396,10 @@ namespace CheckStaging.Services
 
         public string StopBuild(string owner)
         {
+            if (!JenkinsStatus)
+            {
+                return $"Jenkins错误 {_jenkinsLastError}";
+            }
             Task.Run(() =>
             {
                 // fetch building progress fist

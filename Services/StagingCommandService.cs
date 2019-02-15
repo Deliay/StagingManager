@@ -12,10 +12,6 @@ namespace CheckStaging.Services
     {
         public static readonly StagingCommandService Instance = new StagingCommandService();
 
-        public Outgoing Out(string text) => new Outgoing() { text = text };
-
-        public string SkipSpace(string str) => str.Trim();
-
         [CommandHandler("capture", "c")]
         public Outgoing Capture(Command args)
         {
@@ -59,15 +55,16 @@ namespace CheckStaging.Services
             bool hasStaging = false, hasTask = false;
             string getStatusStaging(Staging s) => $"{s.Owner}，剩余{(s.StartTime.AddDays(s.Timeleft) - DateTime.Today).TotalDays}天";
             string getStatusTask(QueueTask t) => t.PreferStaging.Length > 0 ? $"S{string.Join('、', t.PreferStaging)}" : "任意Staging";
+            string getPartners(Staging s) => string.Join(' ', s.ListPartners);
             sb.AppendLine($"**Staging** （空闲：{idleCount}/{StagingService.MAX_STAGING_COUNT}个）");
             if (isAll == false) sb.AppendLine("你目前在占用的Staging: ");
             foreach (var staging in StagingService.Instance.AllStaging.Stagings)
             {
-                if (!isAll && staging.Owner != args.Owner) continue;
+                if (!isAll && staging.Owner != args.Owner && !staging.ListPartners.Contains(args.Owner)) continue;
 
                 if (StagingService.Instance.IsStagingInUse(staging.StagingId))
                 {
-                    sb.AppendLine($"**Staging{staging.StagingId}** {getStatusStaging(staging)}");
+                    sb.AppendLine($"**Staging{staging.StagingId}** {getStatusStaging(staging)}，协作:[{getPartners(staging)}]");
                     hasStaging = true;
                 }
             }
@@ -180,15 +177,16 @@ namespace CheckStaging.Services
                 .AppendLine("这里是Staging占坑机器人~ :wink: ")
                 .AppendLine("---")
                 .AppendLine("**命令列表**")
-                .AppendLine("`!staging capture [可选指定机器列表] 天数`: 占用Staging")
-                .AppendLine("`!staging release [多个机器] 单个机器`: 释放Staging")
-                .AppendLine("`!staging renew [多个机器] 单个机器`: 续期Staging 1天")
-                .AppendLine("`!staging integration`: 自动征用S2进行集成测试1天")
-                .AppendLine("`!staging cancel`: 取消自己所有排队")
-                .AppendLine("`!staging status`: 当前Staging占用情况")
-                .AppendLine("`!staging all`: 所有Staging占用情况")
-                .AppendLine("`!staging help`: 查看帮助")
-                .AppendLine("`!staging jenkins`: 查看Jenkins相关帮助")
+                .AppendLine("!staging ***c***apture `[可选指定机器列表]` `天数`: 占用Staging")
+                .AppendLine("!staging ***r***elease `[多个机器]` `单个机器`: 释放Staging")
+                .AppendLine("!staging re***n***ew `[多个机器]` `单个机器`: 续期Staging 1天")
+                .AppendLine("!staging ***t***ogether `机器` `@需要协作的人`: 将`@需要协作的人`(一个)加入协作列表")
+                .AppendLine("!staging ***i***ntegration: 自动征用S2进行集成测试1天")
+                .AppendLine("!staging cancel(***x***): 取消自己所有排队")
+                .AppendLine("!staging ***s***tatus: 当前Staging占用情况")
+                .AppendLine("!staging all: 所有Staging占用情况")
+                .AppendLine("!staging ***h***elp: 查看帮助")
+                .AppendLine("!staging ***j***enkins: 查看Jenkins相关帮助")
                 .AppendLine("---")
                 .AppendLine("`!staging capture 4`: 希望占`任意Staging` 一共4天")
                 .AppendLine("`!staging capture [5,6] 4`: 希望占用`Staging5或6` 一共4天")
@@ -236,6 +234,29 @@ namespace CheckStaging.Services
                 }
             }
             return new Outgoing() { text = JenkinsServices.Instance.GetMainPanel(args.Owner) };
+        }
+
+        [CommandHandler("together", "t")]
+        public Outgoing Together(Command args)
+        {
+            var splitArgs = args.CommandArgs.Split(' ', 2);
+            if (splitArgs.Length != 2)
+            {
+                return Out("参数错误，请输入`!staging help`查看帮助");
+            }
+
+            var stagingId = int.Parse(splitArgs[0]);
+            var partner = splitArgs[1].Substring(1);
+            var (success, isAdd) = StagingService.Instance.Together(args.Owner, stagingId, partner);
+            if (success)
+            {
+                var verb = isAdd ? "添加" : "移除";
+                return Out($"@{args.Owner} 成功将{partner}{verb}staging{stagingId}的协作列表");
+            }
+            else
+            {
+                return Out($"@{args.Owner} staging{stagingId}{partner}添加失败.");
+            }
         }
 
         private StagingCommandService()

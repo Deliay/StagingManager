@@ -18,6 +18,14 @@ namespace CheckStaging.Services
         public DateTime StartTime { get; set; }
         public int Timeleft { get; set; }
         public int StagingId { get; set; }
+        [NonSerialized]
+        public List<string> ListPartners = new List<string>();
+        public string[] Partners { get => ListPartners.ToArray(); set => ListPartners = new List<string>(value); }
+
+        public bool IsSpecialStaging()
+        {
+            return StagingService.SpecialStagingOwner.Contains(this.Owner);
+        }
 
         public Staging(int sid)
         {
@@ -25,6 +33,7 @@ namespace CheckStaging.Services
             Owner = string.Empty;
             Timeleft = 0;
             StartTime = DateTime.Today;
+            Partners = new string[] { };
         }
     }
 
@@ -58,6 +67,8 @@ namespace CheckStaging.Services
     public class StagingService
     {
         public const int MAX_STAGING_COUNT = 19;
+        public const string INTEGRATION_OWNER = "集成测试";
+        public static readonly string[] SpecialStagingOwner = new string[] { "对外小联调", "仿真环境", "自动化测试", INTEGRATION_OWNER };
         public AllStaging AllStaging;
         public static readonly StagingService Instance = new StagingService();
         private readonly string ConfigurationPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "configuration.json");
@@ -110,18 +121,20 @@ namespace CheckStaging.Services
         public bool Integration()
         {
             var staging = GetStaging(2);
-            if (staging.Owner == "集成测试")
+            if (staging.Owner == INTEGRATION_OWNER)
             {
                 staging.Owner = string.Empty;
                 staging.Timeleft = 0;
                 staging.StartTime = DateTime.Today;
+                staging.Partners = new string[] { };
                 return true;
             }
             else
             {
-                staging.Owner = "集成测试";
+                staging.Owner = INTEGRATION_OWNER;
                 staging.Timeleft = 1;
                 staging.StartTime = DateTime.Today;
+                staging.Partners = new string[] { };
                 return false;
             }
         }
@@ -156,6 +169,7 @@ namespace CheckStaging.Services
                 staging.Owner = Owner;
                 staging.StartTime = DateTime.Today;
                 staging.Timeleft = Time;
+                staging.Partners = new string[] { };
                 _save();
                 return (staging, null, string.Empty);
             }
@@ -266,6 +280,31 @@ namespace CheckStaging.Services
                 return (task, staging);
             }
             return (null, null);
+        }
+
+        public (bool, bool) Together(string Owner, int stagingId, string partner)
+        {
+            var isSpecial = GetStaging(stagingId).IsSpecialStaging();
+            if (!isSpecial && (!IsStagingInUse(stagingId) || !(GetStaging(stagingId).Owner == Owner)))
+            {
+                return (false, false);
+            }
+            if (isSpecial && Owner != partner)
+            {
+                return (false, false);
+            }
+            var isAdd = true;
+            if (!GetStaging(stagingId).ListPartners.Contains(partner))
+            {
+                GetStaging(stagingId).ListPartners.Add(partner);
+            }
+            else
+            {
+                GetStaging(stagingId).ListPartners.Remove(partner);
+                isAdd = false;
+            }
+            _save();
+            return (true, isAdd);
         }
 
         private void _save()

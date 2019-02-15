@@ -16,7 +16,7 @@ namespace CheckStaging.Controllers
         [HttpPost]
         public IActionResult Post([FromBody] Incoming value)
         {
-            if (value.token != "8d6f5328399d242c18169b55a4c18a79")
+            if (value.token != "8d6f5328399d242c18169b55a4c18a79" && value.token != "247b43e123512ea396aed10074fc0e35")
             {
                 return Forbid("Auth Fail");
             }
