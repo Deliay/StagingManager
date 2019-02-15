@@ -159,19 +159,54 @@ namespace CheckStaging.Services
             return name;
         }
 
+        private OutgoingAttachment StringToCiStatus(string status, int num, string url)
+        {
+            var friendlyStatus = "挂";
+            var color = "#fe2e2e";
+            switch (status)
+            {
+                case "success":
+                case "fixed":
+                    friendlyStatus = "过";
+                    color = "#81F781";
+                    break;
+                case "failed":
+                    friendlyStatus = "挂";
+                    break;
+            }
+            return new OutgoingAttachment()
+            {
+                title = $"你的ci #{num}",
+                text = $"**{friendlyStatus}**了",
+                color = color,
+                url = url
+            };
+        }
+
         public void PassCircleCIWebhook(CircleCIWebhook webhook)
         {
             StringBuilder sb = new StringBuilder();
             sb.AppendLine($"**Build** [#{webhook.build_num}]({webhook.build_url}): **{webhook.status}** on branch `{webhook.branch}`");
             sb.AppendLine("---");
+            string user = null;
             if (webhook.pull_requests.Length > 0)
             {
                 var pr = webhook.pull_requests[0];
                 var realName = GetNotifyName(webhook.user.vcs_type, webhook.user.login);
+                if (realName != webhook.user.login) user = realName.Substring(1);
                 sb.AppendLine($"Pull Request: [{pr.head_sha.Substring(0, 6)}]({pr.url}) - {realName}");
                 sb.AppendLine($"> {webhook.subject}");
             }
-            RemindService.Instance.SendMessage(sb.ToString(), "CircleCI");
+            RemindService.Instance.SendMessage(new Outgoing()
+            {
+                text = sb.ToString(),
+                notification = "Circle CI Result",
+                attachments = new OutgoingAttachment[]
+                {
+                    StringToCiStatus(webhook.status, webhook.build_num, webhook.build_url)
+                },
+                user = user,
+            }, "CircleCI");
         }
 
         private void _save()
