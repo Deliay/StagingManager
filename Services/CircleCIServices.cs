@@ -1,9 +1,11 @@
 ﻿using CheckStaging.Models;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using CheckStaging.Utils;
 
 namespace CheckStaging.Services
 {
@@ -13,13 +15,13 @@ namespace CheckStaging.Services
         private static OutgoingAttachment StringToCiStatus(string status, int num, string url)
         {
             var friendlyStatus = "挂";
-            var color = "#fe2e2e";
+            var color = Color.Red;
             switch (status)
             {
                 case "success":
                 case "fixed":
                     friendlyStatus = "过";
-                    color = "#81F781";
+                    color = Color.Green;
                     break;
                 case "failed":
                     friendlyStatus = "挂";
@@ -29,7 +31,7 @@ namespace CheckStaging.Services
             {
                 title = $"你的ci #{num}",
                 text = $"**{friendlyStatus}**了",
-                color = color,
+                color = color.ToHtml(),
                 url = url
             };
         }
@@ -44,7 +46,7 @@ namespace CheckStaging.Services
             if (webhook.pull_requests.Length > 0)
             {
                 var pr = webhook.pull_requests[0];
-                var realName = ChannelService.Instance.ToBearychatName(webhook.user.vcs_type, webhook.user.login);
+                var realName = ChannelService.Instance.ToFriendlyName(webhook.user.vcs_type, webhook.user.login);
                 if (realName != webhook.user.login) user = realName.Substring(1);
                 sb.AppendLine(realName);
                 attachments.Add(new OutgoingAttachment()

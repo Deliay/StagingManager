@@ -40,7 +40,7 @@ namespace CheckStaging.Services
             Console.WriteLine($"载入了{AccountBind.bind.Count}个渠道");
         }
 
-        public string ToBearychatName(string channel, string name)
+        public string ToFriendlyName(string channel, string name, bool withAt = true)
         {
             // exist this channel
             if (AccountBind.bind.ContainsKey(channel))
@@ -48,7 +48,8 @@ namespace CheckStaging.Services
                 // exist bind
                 if (AccountBind.bind[channel].ContainsKey(name))
                 {
-                    return $"@{AccountBind.bind[channel][name]} ({name})";
+                    var at = withAt ? "@" : "";
+                    return $"{at}{AccountBind.bind[channel][name]} ({name})";
                 }
             }
             return name;

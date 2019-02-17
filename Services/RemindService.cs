@@ -40,6 +40,10 @@ namespace CheckStaging.Services
             }
             PostUri = Remind.Channels.ToDictionary(key => key.Name, value => new Uri(value.Url));
         }
+        public bool HasChannel(string channel)
+        {
+            return PostUri.ContainsKey(channel);
+        }
         private static DateTime GetNextNotifyTime()
         {
             // after 18:00, notify in tomorrow 10:00AM

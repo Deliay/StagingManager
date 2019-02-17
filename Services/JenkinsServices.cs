@@ -124,6 +124,7 @@ namespace CheckStaging.Services
 
     public class JenkinsServices
     {
+        public const string JENKINS_CHANNEL = "Jenkins";
         public static readonly Dictionary<int, bool> BuildStatusCache = new Dictionary<int, bool>();
         public static readonly JenkinsServices Instance = new JenkinsServices();
         private string _jenkinsLastError = string.Empty;
@@ -171,7 +172,7 @@ namespace CheckStaging.Services
                         }
                     }
                     HttpClient.GetAsync(Request(""));
-                    if (!RemindService.Instance.PostUri.ContainsKey("Jenkins"))
+                    if (!RemindService.Instance.HasChannel(JENKINS_CHANNEL))
                     {
                         _jenkinsLastError = "提醒服务中尚未配置Jenkins字段，无法使用 Staging部署机器人";
                         return;
@@ -327,7 +328,7 @@ namespace CheckStaging.Services
                     sb.AppendLine($"需要帮助，请输入`!staging help`");
                 }
 
-                RemindService.Instance.SendMessage(sb.ToString(), "Jenkins");
+                RemindService.Instance.SendMessage(sb.ToString(), JENKINS_CHANNEL);
             });
             return string.Empty;
         }
@@ -375,7 +376,7 @@ namespace CheckStaging.Services
                 if (BuildCache.Any(p => p.Value.building && ParameterCache[p.Key].staging == fullStagingName))
                 {
                     var build = BuildCache.First(p => p.Value.building && ParameterCache[p.Key].staging == fullStagingName);
-                    RemindService.Instance.SendMessage($"@{owner} 这个staging已经正在部署了，点此 [查看部署进度]({JenkinsConfiguration.BaseURL}job/{JenkinsConfiguration.Pipeline}/{build.Value.number})", "Jenkins");
+                    RemindService.Instance.SendMessage($"@{owner} 这个staging已经正在部署了，点此 [查看部署进度]({JenkinsConfiguration.BaseURL}job/{JenkinsConfiguration.Pipeline}/{build.Value.number})", JENKINS_CHANNEL);
                     return;
                 }
                 string ret = string.Empty;
@@ -389,7 +390,7 @@ namespace CheckStaging.Services
                     }
                     else ret = $"@{owner} 部署任务 `{branch}`->`{fullStagingName}` 添加失败!! ({result.StatusCode.ToString()})";
                 };
-                RemindService.Instance.SendMessage(ret, "Jenkins");
+                RemindService.Instance.SendMessage(ret, JENKINS_CHANNEL);
             });
             return "部署请求已经发送。";
         }
@@ -427,7 +428,7 @@ namespace CheckStaging.Services
                     }
                 }
                 if (ret == string.Empty) ret = $"@{owner} 没有找到你可以结束的任务。";
-                RemindService.Instance.SendMessage(ret, "Jenkins");
+                RemindService.Instance.SendMessage(ret, JENKINS_CHANNEL);
             });
             return string.Empty;
         }
