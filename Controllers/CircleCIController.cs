@@ -15,7 +15,7 @@ namespace CheckStaging.Controllers
         [HttpPost]
         public IActionResult Post([FromBody] CircleCIWebhookPayload value)
         {
-            CircleCICommandService.Instance.PassCircleCIWebhook(value.payload);
+            CircleCIServices.PassCircleCIWebhook(value.payload);
             return Ok();
         }
 
@@ -25,7 +25,7 @@ namespace CheckStaging.Controllers
             if (value.token != "11f76f998feac74f9bb6de5bab293ed1") return Forbid("Auth Fail");
             if (value.channel_name != "CI挂没挂" && value.channel_name != "Staging占坑测试频道") return Forbid("Wrong channel");
             if (value.user_name == null || value.user_name.Length == 0) return Forbid("User name error");
-            return Ok(CircleCICommandService.Instance.PassIncoming(value));
+            return Ok(ChannelCommandService.Instance.PassIncoming(value));
         }
     }
 }
