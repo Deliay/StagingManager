@@ -252,11 +252,11 @@ namespace CheckStaging.Services
             if (success)
             {
                 var verb = isAdd ? "添加" : "移除";
-                return Out($"@{args.Owner} 成功将{partner}{verb}staging{stagingId}的协作列表");
+                return Out($"@{args.Owner} 成功将`{partner}`{verb}staging{stagingId}的协作列表");
             }
             else
             {
-                return Out($"@{args.Owner} staging{stagingId}{partner}添加失败.");
+                return Out($"@{args.Owner} staging{stagingId}`{partner}`添加失败.");
             }
         }
 

@@ -59,8 +59,6 @@ namespace CheckStaging.Services
             Stagings[2].Timeleft = 99999;
             Stagings[8].Owner = "仿真环境";
             Stagings[8].Timeleft = 99999;
-            Stagings[14].Owner = "自动化测试";
-            Stagings[14].Timeleft = 99999;
         }
     }
 
@@ -68,7 +66,7 @@ namespace CheckStaging.Services
     {
         public const int MAX_STAGING_COUNT = 19;
         public const string INTEGRATION_OWNER = "集成测试";
-        public static readonly string[] SpecialStagingOwner = new string[] { "对外小联调", "仿真环境", "自动化测试", INTEGRATION_OWNER };
+        public static readonly string[] SpecialStagingOwner = new string[] { "对外小联调", "仿真环境", INTEGRATION_OWNER };
         public AllStaging AllStaging;
         public static readonly StagingService Instance = new StagingService();
         private readonly string ConfigurationPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "configuration.json");
@@ -222,6 +220,7 @@ namespace CheckStaging.Services
                         staging.Owner = string.Empty;
                         staging.StartTime = DateTime.Today;
                         staging.Timeleft = 0;
+                        staging.Partners = new string[] { };
                         removedStaging.AddLast(staging);
                     }
                 }
