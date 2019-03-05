@@ -176,7 +176,10 @@ namespace CheckStaging.Services
             ScheduleTaskServices.Instance.RegisterScheduleTask(scheduleWillExpired, GetNextNotifyTime() - DateTime.Now, TimeSpan.Zero, Notify);
             Console.WriteLine($"scheduleIsAlreadyExpired will execute at {DateTime.Today.AddDays(1)}  ({(DateTime.Today.AddDays(1) - DateTime.Now).TotalHours} hour(s) left.)");
             ScheduleTaskServices.Instance.RegisterScheduleTask(scheduleIsAlreadyExpired, DateTime.Today.AddDays(1) - DateTime.Now, TimeSpan.Zero, Boardcast);
-            ScheduleTaskServices.Instance.RegisterScheduleTask(scheduleJenkinsBuildRefresh, DateTime.Now.AddSeconds(15) - DateTime.Now, TimeSpan.Zero, Fivithsec);
+            if (JenkinsServices.Instance.JenkinsStatus)
+            {
+                ScheduleTaskServices.Instance.RegisterScheduleTask(scheduleJenkinsBuildRefresh, DateTime.Now.AddSeconds(15) - DateTime.Now, TimeSpan.Zero, Fivithsec);
+            }
         }
     }
 }
