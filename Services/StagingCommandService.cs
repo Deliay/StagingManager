@@ -232,23 +232,27 @@ namespace CheckStaging.Services
         [CommandHandler("jenkins", "j")]
         public Outgoing Jenkins(Command args)
         {
+            if (args.Channel != JenkinsServices.JENKINS_INCOMING_CHANNEL)
+            {
+                return Out($"请到 #{JenkinsServices.JENKINS_INCOMING_CHANNEL} 频道使用jenkins命令");
+            }
             var splitArgs = args.CommandArgs.Split(' ', 3);
             if (args.CommandArgs.StartsWith("stop"))
             {
-                return new Outgoing() { text = JenkinsServices.Instance.StopBuild(args.Owner) };
+                return Out(JenkinsServices.Instance.StopBuild(args.Owner));
             }
             else if (args.CommandArgs.StartsWith("b"))
             {
                 if (splitArgs.Length == 3)
                 {
-                    return new Outgoing() { text = JenkinsServices.Instance.Build(args.Owner, splitArgs[1], splitArgs[2]) };
+                    return Out(JenkinsServices.Instance.Build(args.Owner, splitArgs[1], splitArgs[2]));
                 }
                 else
                 {
-                    return new Outgoing() { text = $"部署参数错误" };
+                    return Out($"部署参数错误");
                 }
             }
-            return new Outgoing() { text = JenkinsServices.Instance.GetMainPanel(args.Owner) };
+            return Out(JenkinsServices.Instance.GetMainPanel(args.Owner));
         }
 
         [CommandHandler("together", "t")]
