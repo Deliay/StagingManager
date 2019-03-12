@@ -20,7 +20,7 @@ namespace CheckStaging.Controllers
             {
                 return Forbid("Auth Fail");
             }
-            if (value.channel_name != "Staging占坑测试频道" && value.channel_name != "staging")
+            if (value.channel_name != "Staging占坑测试频道" && value.channel_name != "staging" && value.channel_name != "倍洽小助手")
             {
                 return Forbid("Channel error");
             }
