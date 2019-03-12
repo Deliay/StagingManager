@@ -208,8 +208,12 @@ namespace CheckStaging.Services
                 .AppendLine("3. 特殊的s3/s9/s15将会被系统标记为占用状态，无法在本机器人处进行占用")
                 .AppendLine("4. 每周二四五集成测试，可以直接使用`!staging i`命令征用s2")
                 .AppendLine("5. 每天10、14、18点都会提醒owner只剩1天的staging。");
-
-            return Out(sb.ToString());
+            RemindService.Instance.SendMessage(new Outgoing()
+            {
+                user = args.Owner,
+                text = sb.ToString(),
+            });
+            return Out("相关帮助信息已发送私聊，请查看.");
         }
 
         [CommandHandler("integration", "i")]
