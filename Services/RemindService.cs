@@ -166,10 +166,17 @@ namespace CheckStaging.Services
             };
             Action scheduleJenkinsBuildRefresh = () =>
             {
-                if (JenkinsServices.Instance.JenkinsStatus)
+                try
                 {
-                    JenkinsServices.Instance.GetPipeline();
-                    JenkinsServices.Instance.PeekWhileNotInBuild();
+                    if (JenkinsServices.Instance.JenkinsStatus)
+                    {
+                        JenkinsServices.Instance.GetPipeline();
+                        JenkinsServices.Instance.PeekWhileNotInBuild();
+                    }
+                }
+                catch (Exception e)
+                {
+                    JenkinsServices.Instance.OnError(e);
                 }
             };
             Console.WriteLine($"scheduleWillExpired will execute at {GetNextNotifyTime()}  ({(GetNextNotifyTime() - DateTime.Now).TotalHours} hour(s) left.)");
