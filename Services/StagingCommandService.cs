@@ -53,7 +53,8 @@ namespace CheckStaging.Services
             bool isIdle = args.CommandArgs == "idle";
             int idleCount = StagingService.Instance.IdleStagingCount();
             bool hasStaging = false, hasTask = false;
-            string getStatusStaging(Staging s) => $"{s.Owner}，剩余{(s.StartTime.AddDays(s.Timeleft) - DateTime.Today).TotalDays}天 ({s.LastBuildBranch ?? "无"})";
+            string lastBuildBranch(Staging s) => s.LastBuildBranch.Length > 0 ? $"({s.LastBuildBranch})" : string.Empty;
+            string getStatusStaging(Staging s) => $"{s.Owner}，剩余{(s.StartTime.AddDays(s.Timeleft) - DateTime.Today).TotalDays}天 ${lastBuildBranch(s)}";
             string getStatusTask(QueueTask t) => t.PreferStaging.Length > 0 ? $"S{string.Join('、', t.PreferStaging)}" : "任意Staging";
             string getPartners(Staging s) => string.Join(' ', s.ListPartners);
             sb.AppendLine($"**Staging** （空闲：{idleCount}/{StagingService.MAX_STAGING_COUNT}个）");
