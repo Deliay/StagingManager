@@ -405,7 +405,8 @@ namespace CheckStaging.Services
                     if (result.StatusCode == HttpStatusCode.Created)
                     {
                         StagingService.Instance.BuildBranch(stagingInst.StagingId, branch);
-                        ret = $"@{owner} 部署任务 `{branch}`->`{fullStagingName}` 添加成功 :tada: (已记录部署分支 {branch})";
+                        var lastBranchRecord = stagingInst.LastBuildBranch != branch ? $" (已记录 {branch})" : string.Empty;
+                        ret = $"@{owner} 部署任务 `{branch}`->`{fullStagingName}` 添加成功 :tada:{lastBranchRecord}";
                     }
                     else ret = $"@{owner} 部署任务 `{branch}`->`{fullStagingName}` 添加失败!! ({result.StatusCode.ToString()})";
                 };

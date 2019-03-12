@@ -247,6 +247,18 @@ namespace CheckStaging.Services
                 {
                     return Out(JenkinsServices.Instance.Build(args.Owner, splitArgs[1], splitArgs[2]));
                 }
+                else if (splitArgs.Length == 2)
+                {
+                    var stagingInst = StagingService.Instance.GetStaging(int.Parse(splitArgs[1]));
+                    if (stagingInst.LastBuildBranch.Length > 0)
+                    {
+                        return Out(JenkinsServices.Instance.Build(args.Owner, splitArgs[1], stagingInst.LastBuildBranch));
+                    }
+                    else
+                    {
+                        return Out("这个staging还没有记录有效的部署分支，请先带分支名部署一次~");
+                    }
+                }
                 else
                 {
                     return Out($"部署参数错误");
