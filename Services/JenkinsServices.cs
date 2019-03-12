@@ -138,6 +138,14 @@ namespace CheckStaging.Services
         private readonly DateTime UNIX = new DateTime(1970, 1, 1, 0, 0, 0).AddHours(8);
         private string crumbIssuer = "";
         private string crumbField = "";
+        private int _errorCount = 0;
+        public void OnError(Exception e)
+        {
+            if (++_errorCount > 3)
+            {
+                Instance._jenkinsLastError = $"Jenkins在重试{_errorCount}后报错: {e.Message}. 已停止使用，请手动重启";
+            }
+        }
         private Pipeline Pipeline;
         private JenkinsServices()
         {
@@ -291,7 +299,7 @@ namespace CheckStaging.Services
                 if (lastBuild.building) sb.AppendLine($"状态：`Building` `{lastBuildParam.branch}`->`{lastBuildParam.staging}({lastBuild.estimatedDuration / 1000:N2}s)`");
                 else sb.AppendLine($"状态：`Idle` 上次部署：`{lastBuildParam.branch}`->`{lastBuildParam.staging}`(`{lastBuild.result}`)");
                 var allStagingIds = StagingService.Instance.GetAllStaging()
-                    .Where(s => StagingService.Instance.IsStagingInUse(s) && s.Owner == owner)
+                    .Where(s => StagingService.Instance.IsStagingInUse(s) && s.IsStagingCanManageBy(owner))
                     .Select(s => s.StagingId).ToList();
                 sb.AppendLine("---");
                 bool isBuilding = false;
@@ -321,6 +329,15 @@ namespace CheckStaging.Services
                         sb.AppendLine("你的部署任务正在进行中...");
                         sb.AppendLine("使用`!staging jenkins stop`取消你的这次任务");
                     }
+                    sb.AppendLine($"若staging已经部署过分支，输入`!staging jenkins b {allStagingIds[0]}`即可重复上一次部署的分支");
+                    foreach (var id in allStagingIds)
+                    {
+                        var stagingInst = StagingService.Instance.GetStaging(id);
+                        if (stagingInst.LastBuildBranch.Length > 0)
+                        {
+                            sb.AppendLine($"> Staging{stagingInst.StagingId} -> {stagingInst.LastBuildBranch}");
+                        }
+                    }
                 }
                 else
                 {
@@ -338,7 +355,7 @@ namespace CheckStaging.Services
             var intStaging = int.Parse(staging);
             var stagingInst = StagingService.Instance.GetStaging(intStaging);
             var isSpecial = stagingInst.IsSpecialStaging();
-            if (stagingInst.Owner != owner && !stagingInst.ListPartners.Contains(owner))
+            if (!stagingInst.IsStagingCanOperateBy(owner))
             {
                 return $"@{owner} 这个staging不是你在占用或协作~ 请先占用或加入协作。如果仍需要部署请前往 [{JenkinsConfiguration.Pipeline}]({JenkinsConfiguration.BaseURL}job/{JenkinsConfiguration.Pipeline})部署";
             }
@@ -386,7 +403,8 @@ namespace CheckStaging.Services
                     Console.WriteLine(HttpClient.DefaultRequestHeaders.ToString());
                     if (result.StatusCode == HttpStatusCode.Created)
                     {
-                        ret = $"@{owner} 部署任务 `{branch}`->`{fullStagingName}` 添加成功 :tada:";
+                        StagingService.Instance.BuildBranch(stagingInst.StagingId, branch);
+                        ret = $"@{owner} 部署任务 `{branch}`->`{fullStagingName}` 添加成功 :tada: (已记录部署分支 {branch})";
                     }
                     else ret = $"@{owner} 部署任务 `{branch}`->`{fullStagingName}` 添加失败!! ({result.StatusCode.ToString()})";
                 };
@@ -407,7 +425,7 @@ namespace CheckStaging.Services
                 PeekWhileNotInBuild();
                 var ret = string.Empty;
                 var allStagingIds = StagingService.Instance.GetAllStaging()
-                .Where(s => StagingService.Instance.IsStagingInUse(s) && s.Owner == owner)
+                .Where(s => StagingService.Instance.IsStagingInUse(s) && s.IsStagingCanOperateBy(owner))
                 .Select(s => $"staging{s.StagingId}").ToList();
 
                 var allBuilding = BuildCache.Where(b => b.Value.building);

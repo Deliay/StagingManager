@@ -53,7 +53,7 @@ namespace CheckStaging.Services
             bool isIdle = args.CommandArgs == "idle";
             int idleCount = StagingService.Instance.IdleStagingCount();
             bool hasStaging = false, hasTask = false;
-            string getStatusStaging(Staging s) => $"{s.Owner}，剩余{(s.StartTime.AddDays(s.Timeleft) - DateTime.Today).TotalDays}天";
+            string getStatusStaging(Staging s) => $"{s.Owner}，剩余{(s.StartTime.AddDays(s.Timeleft) - DateTime.Today).TotalDays}天 ({s.LastBuildBranch ?? "无"})";
             string getStatusTask(QueueTask t) => t.PreferStaging.Length > 0 ? $"S{string.Join('、', t.PreferStaging)}" : "任意Staging";
             string getPartners(Staging s) => string.Join(' ', s.ListPartners);
             sb.AppendLine($"**Staging** （空闲：{idleCount}/{StagingService.MAX_STAGING_COUNT}个）");
@@ -64,8 +64,8 @@ namespace CheckStaging.Services
 
                 if (StagingService.Instance.IsStagingInUse(staging.StagingId))
                 {
-                    var partners = staging.ListPartners.Count > 0 ? $"协作:[{getPartners(staging)}]" : string.Empty;
-                    sb.AppendLine($"**Staging{staging.StagingId}** {getStatusStaging(staging)}，{partners}");
+                    var partners = staging.ListPartners.Count > 0 ? $"，协作:[{getPartners(staging)}]" : string.Empty;
+                    sb.AppendLine($"**Staging{staging.StagingId}** {getStatusStaging(staging)}{partners}");
                     hasStaging = true;
                 }
             }
@@ -87,7 +87,15 @@ namespace CheckStaging.Services
             sb.AppendLine();
             sb.AppendLine("如需帮助，请输入`!staging help`");
             if (!isAll) sb.AppendLine("如需查看所有Staging占用情况，请使用`!staging status all`");
-            return Out(sb.ToString());
+            if (isAll)
+            {
+                RemindService.Instance.SendMessage(new Outgoing()
+                {
+                    user = args.Owner,
+                    text = sb.ToString(),
+                });
+            }
+            return Out("相关信息已私聊发送，请查收。");
         }
 
         [CommandHandler("release", "r")]

@@ -21,16 +21,28 @@ namespace CheckStaging.Services
         [NonSerialized]
         public List<string> ListPartners = new List<string>();
         public string[] Partners { get => ListPartners.ToArray(); set => ListPartners = new List<string>(value); }
+        public string LastBuildBranch { get; set; }
 
         public bool IsSpecialStaging()
         {
-            return StagingService.SpecialStagingOwner.Contains(this.Owner);
+            return StagingService.SpecialStagingOwner.Contains(Owner);
+        }
+
+        public bool IsStagingCanOperateBy(string @operator)
+        {
+            return Owner == @operator || Partners.Contains(@operator);
+        }
+
+        public bool IsStagingCanManageBy(string @operator)
+        {
+            return Owner == @operator;
         }
 
         public Staging(int sid)
         {
             StagingId = sid;
             Owner = string.Empty;
+            LastBuildBranch = string.Empty;
             Timeleft = 0;
             StartTime = DateTime.Today;
             Partners = new string[] { };
@@ -144,11 +156,11 @@ namespace CheckStaging.Services
                 return (null, null, "时间只能在(0, 365]之间");
             }
             Staging staging = null;
-            if (GetAllStaging().Any(s => s.Owner == Owner && perfer.Contains(s.StagingId) && IsStagingInUse(s.StagingId)))
+            if (GetAllStaging().Any(s => s.IsStagingCanManageBy(Owner) && perfer.Contains(s.StagingId) && IsStagingInUse(s.StagingId)))
             {
                 return (null, null, "你已经占了期望的Staging了，请换个Staging");
             }
-            if (perfer.Length == 0 && GetAllStaging().Any(s => s.Owner == Owner && IsStagingInUse(s.StagingId)))
+            if (perfer.Length == 0 && GetAllStaging().Any(s => s.IsStagingCanManageBy(Owner) && IsStagingInUse(s.StagingId)))
             {
                 return (null, null, "你已经占了任意一台Staging，如需其他Staging，请指定Staging");
             }
@@ -168,6 +180,7 @@ namespace CheckStaging.Services
                 staging.StartTime = DateTime.Today;
                 staging.Timeleft = Time;
                 staging.Partners = new string[] { };
+                staging.LastBuildBranch = string.Empty;
                 _save();
                 return (staging, null, string.Empty);
             }
@@ -180,7 +193,7 @@ namespace CheckStaging.Services
 
         public bool RenewStaging(string Owner, int stagingId)
         {
-            if (IsStagingInUse(stagingId) && GetStaging(stagingId).Owner == Owner)
+            if (IsStagingInUse(stagingId) && GetStaging(stagingId).IsStagingCanManageBy(Owner))
             {
                 GetStaging(stagingId).Timeleft++;
                 _save();
@@ -206,21 +219,22 @@ namespace CheckStaging.Services
                 IEnumerable<Staging> realStagings = null;
                 if (stagingIds.Length == 0)
                 {
-                    realStagings = GetAllStaging().Where(s => s.Owner == Owner);
+                    realStagings = GetAllStaging().Where(s => s.IsStagingCanManageBy(Owner));
                 }
                 else
                 {
-                    realStagings = stagingIds.Where(sid => GetStaging(sid).Owner == Owner).Select(GetStaging);
+                    realStagings = stagingIds.Where(sid => GetStaging(sid).IsStagingCanManageBy(Owner)).Select(GetStaging);
                 }
                 LinkedList<Staging> removedStaging = new LinkedList<Staging>();
                 foreach (var staging in realStagings)
                 {
-                    if (staging.Owner == Owner)
+                    if (staging.IsStagingCanManageBy(Owner))
                     {
                         staging.Owner = string.Empty;
                         staging.StartTime = DateTime.Today;
                         staging.Timeleft = 0;
                         staging.Partners = new string[] { };
+                        staging.LastBuildBranch = string.Empty;
                         removedStaging.AddLast(staging);
                     }
                 }
@@ -284,7 +298,7 @@ namespace CheckStaging.Services
         public (bool, bool) Together(string Owner, int stagingId, string partner)
         {
             var isSpecial = GetStaging(stagingId).IsSpecialStaging();
-            if (!isSpecial && (!IsStagingInUse(stagingId) || !(GetStaging(stagingId).Owner == Owner)))
+            if (!isSpecial && (!IsStagingInUse(stagingId) || !(GetStaging(stagingId).IsStagingCanManageBy(Owner))))
             {
                 return (false, false);
             }
@@ -304,6 +318,12 @@ namespace CheckStaging.Services
             }
             _save();
             return (true, isAdd);
+        }
+
+        public void BuildBranch(int staging, string branch)
+        {
+            GetStaging(staging).LastBuildBranch = branch;
+            _save();
         }
 
         private void _save()
