@@ -94,8 +94,9 @@ namespace CheckStaging.Services
                     user = args.Owner,
                     text = sb.ToString(),
                 });
+                return Out("相关信息已私聊发送，请查收。");
             }
-            return Out("相关信息已私聊发送，请查收。");
+            return Out(sb.ToString());
         }
 
         [CommandHandler("release", "r")]
