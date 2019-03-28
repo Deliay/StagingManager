@@ -125,6 +125,8 @@ namespace CheckStaging.Models
         SUBMITTED,
         REVIEW_REQUESTED,
         REVIEW_REQUEST_REMOVED,
+        OPENED,
+        SYNCHRONIZE,
     }
 
     public struct GithubWebhook
