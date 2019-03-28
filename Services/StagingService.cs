@@ -38,6 +38,11 @@ namespace CheckStaging.Services
             return Owner == @operator;
         }
 
+        public bool IsNewPipelineStaging()
+        {
+            return StagingService.Instance.AllStaging.NewPipelineStagingIds.Contains(StagingId);
+        }
+
         public Staging(int sid)
         {
             StagingId = sid;
@@ -64,6 +69,7 @@ namespace CheckStaging.Services
         public Queue<QueueTask> QueueTasks = new Queue<QueueTask>();
         public Staging[] Stagings { get; set; }
         public QueueTask[] Tasks { get => QueueTasks.ToArray(); set => QueueTasks = new Queue<QueueTask>(value); }
+        public List<int> NewPipelineStagingIds { get; set; }
         public AllStaging()
         {
             Stagings = Enumerable.Range(1, StagingService.MAX_STAGING_COUNT).Select(i => new Staging(i)).ToArray();
@@ -71,6 +77,7 @@ namespace CheckStaging.Services
             Stagings[2].Timeleft = 99999;
             Stagings[8].Owner = "仿真环境";
             Stagings[8].Timeleft = 99999;
+            NewPipelineStagingIds = new List<int>();
         }
     }
 

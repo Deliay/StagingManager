@@ -120,6 +120,7 @@ namespace CheckStaging.Services
         public string Password { get; set; }
         public string BaseURL { get; set; }
         public string Pipeline { get; set; }
+        public string PipelineNew { get; set; }
     }
 
     public class JenkinsServices
@@ -144,7 +145,7 @@ namespace CheckStaging.Services
         {
             if (++_errorCount > 3)
             {
-                Instance._jenkinsLastError = $"Jenkins在重试{_errorCount}后报错: {e.Message}. 已停止使用，请手动重启";
+                Instance._jenkinsLastError = $"Jenkins在重试{_errorCount}次后报错: {e.Message}. 已停止使用，请手动重启";
             }
         }
         private Pipeline Pipeline;
@@ -356,6 +357,7 @@ namespace CheckStaging.Services
             var intStaging = int.Parse(staging);
             var stagingInst = StagingService.Instance.GetStaging(intStaging);
             var isSpecial = stagingInst.IsSpecialStaging();
+            var isNewPipeline = stagingInst.IsNewPipelineStaging();
             if (!stagingInst.IsStagingCanOperateBy(owner))
             {
                 return $"@{owner} 这个staging不是你在占用或协作~ 请先占用或加入协作。如果仍需要部署请前往 [{JenkinsConfiguration.Pipeline}]({JenkinsConfiguration.BaseURL}job/{JenkinsConfiguration.Pipeline})部署";
@@ -398,20 +400,25 @@ namespace CheckStaging.Services
                     return;
                 }
                 string ret = string.Empty;
-                using (var result = HttpClient.PostAsync(Request($"job/{JenkinsConfiguration.Pipeline}/build"), content).Result)
+                string buildPipeline = stagingInst.IsNewPipelineStaging() ? JenkinsConfiguration.PipelineNew : JenkinsConfiguration.Pipeline;
+                using (var result = HttpClient.PostAsync(Request($"job/{buildPipeline}/build"), content).Result)
                 {
                     Console.WriteLine(result.ToString());
                     Console.WriteLine(HttpClient.DefaultRequestHeaders.ToString());
                     if (result.StatusCode == HttpStatusCode.Created)
                     {
-                        StagingService.Instance.BuildBranch(stagingInst.StagingId, branch);
                         var lastBranchRecord = stagingInst.LastBuildBranch != branch ? $" (已记录 {branch})" : string.Empty;
+                        StagingService.Instance.BuildBranch(stagingInst.StagingId, branch);
                         ret = $"@{owner} 部署任务 `{branch}`->`{fullStagingName}` 添加成功 :tada:{lastBranchRecord}";
                     }
                     else ret = $"@{owner} 部署任务 `{branch}`->`{fullStagingName}` 添加失败!! ({result.StatusCode.ToString()})";
                 };
                 RemindService.Instance.SendMessage(ret, JENKINS_MESSAGE_CHANNEL);
             });
+            if (stagingInst.IsNewPipelineStaging())
+            {
+                return "部署请求已发送。（注：新Docker程暂不支持进度跟踪）";
+            }
             return "部署请求已经发送。";
         }
 
