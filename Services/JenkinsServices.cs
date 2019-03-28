@@ -389,6 +389,24 @@ namespace CheckStaging.Services
                 }).ToString()),
                 new KeyValuePair<string, string>(crumbField, crumbIssuer),
             });
+            if (stagingInst.IsNewPipelineStaging())
+            {
+                content = new FormUrlEncodedContent(new[] {
+                    new KeyValuePair<string, string>("name", "branch"),
+                    new KeyValuePair<string, string>("value", branch),
+                    new KeyValuePair<string, string>("name", "deployer"),
+                    new KeyValuePair<string, string>("value", owner),
+                    new KeyValuePair<string, string>("name", "staging"),
+                    new KeyValuePair<string, string>("value", fullStagingName),
+                    new KeyValuePair<string, string>("json", JObject.FromObject(new BuildWithParameters() {
+                    parameter = new List<ParameterAction>() {
+                        new ParameterAction() { name = "branch", value = branch },
+                        new ParameterAction() { name = "deployer", value = owner },
+                        new ParameterAction() { name = "staging", value = fullStagingName },
+                    },
+                    }).ToString()),
+                });
+            }
             Task.Run(() =>
             {
                 GetPipeline();
@@ -417,7 +435,7 @@ namespace CheckStaging.Services
             });
             if (stagingInst.IsNewPipelineStaging())
             {
-                return "部署请求已发送。（注：新Docker程暂不支持进度跟踪）";
+                return "部署请求已发送。（注：新Docker流程暂不支持进度跟踪）";
             }
             return "部署请求已经发送。";
         }
