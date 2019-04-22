@@ -371,23 +371,13 @@ namespace CheckStaging.Services
                 new KeyValuePair<string, string>("value", owner),
                 new KeyValuePair<string, string>("name", "staging"),
                 new KeyValuePair<string, string>("value", fullStagingName),
-                new KeyValuePair<string, string>("name", "ignore_lint"),
-                new KeyValuePair<string, string>("value", "true"),
-                new KeyValuePair<string, string>("name", "without_sourcemap"),
-                new KeyValuePair<string, string>("value", "true"),
-                new KeyValuePair<string, string>("name", "update_env"),
-                new KeyValuePair<string, string>("value", "false"),
                 new KeyValuePair<string, string>("json", JObject.FromObject(new BuildWithParameters() {
-                    parameter = new List<ParameterAction>() {
-                        new ParameterAction() { name = "branch", value = branch },
-                        new ParameterAction() { name = "deployer", value = owner },
-                        new ParameterAction() { name = "staging", value = fullStagingName },
-                        new ParameterAction() { name = "ignore_lint", value = "true" },
-                        new ParameterAction() { name = "without_sourcemap", value = "true" },
-                        new ParameterAction() { name = "update_env", value = "false" },
-                    },
+                parameter = new List<ParameterAction>() {
+                    new ParameterAction() { name = "branch", value = branch },
+                    new ParameterAction() { name = "deployer", value = owner },
+                    new ParameterAction() { name = "staging", value = fullStagingName },
+                },
                 }).ToString()),
-                new KeyValuePair<string, string>(crumbField, crumbIssuer),
             });
             if (stagingInst.IsNewPipelineStaging())
             {
@@ -398,13 +388,23 @@ namespace CheckStaging.Services
                     new KeyValuePair<string, string>("value", owner),
                     new KeyValuePair<string, string>("name", "staging"),
                     new KeyValuePair<string, string>("value", fullStagingName),
+                    new KeyValuePair<string, string>("name", "ignore_lint"),
+                    new KeyValuePair<string, string>("value", "true"),
+                    new KeyValuePair<string, string>("name", "without_sourcemap"),
+                    new KeyValuePair<string, string>("value", "true"),
+                    new KeyValuePair<string, string>("name", "update_env"),
+                    new KeyValuePair<string, string>("value", "false"),
                     new KeyValuePair<string, string>("json", JObject.FromObject(new BuildWithParameters() {
-                    parameter = new List<ParameterAction>() {
-                        new ParameterAction() { name = "branch", value = branch },
-                        new ParameterAction() { name = "deployer", value = owner },
-                        new ParameterAction() { name = "staging", value = fullStagingName },
-                    },
+                        parameter = new List<ParameterAction>() {
+                            new ParameterAction() { name = "branch", value = branch },
+                            new ParameterAction() { name = "deployer", value = owner },
+                            new ParameterAction() { name = "staging", value = fullStagingName },
+                            new ParameterAction() { name = "ignore_lint", value = "true" },
+                            new ParameterAction() { name = "without_sourcemap", value = "true" },
+                            new ParameterAction() { name = "update_env", value = "false" },
+                        },
                     }).ToString()),
+                    new KeyValuePair<string, string>(crumbField, crumbIssuer),
                 });
             }
             Task.Run(() =>
@@ -435,7 +435,7 @@ namespace CheckStaging.Services
             });
             if (stagingInst.IsNewPipelineStaging())
             {
-                return "部署请求已发送。（注：新Docker流程暂不支持进度跟踪）";
+                return "部署请求已发送。（注：旧流程暂不支持进度跟踪）";
             }
             return "部署请求已经发送。";
         }
